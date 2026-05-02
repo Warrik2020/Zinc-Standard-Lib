@@ -1,0 +1,20 @@
+module();
+
+###
+Memory.zn - small memory/ptr helpers.
+###
+
+func int rt_malloc(int bytes) { return __zinc_rt_malloc(bytes); }
+func void rt_memset(int ptr, int value, int bytes) { __zinc_rt_memset(ptr, value, bytes); }
+func void rt_memcpy(int dst, int src, int bytes) { __zinc_rt_memcpy(dst, src, bytes); }
+
+# Load/store 8-byte slots in a raw memory block (ptr is a byte pointer).
+func int ptr_load(int ptr, int index) {
+    p is ptr + (index * 8);
+    return *p;
+}
+
+func void ptr_store(int ptr, int index, int value) {
+    p is ptr + (index * 8);
+    *p is value;
+}

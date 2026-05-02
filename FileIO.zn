@@ -1,0 +1,157 @@
+module();
+
+###
+FileIO.zn - tiny Zinc standard library (Linux/glibc)
+
+This module provides minimal file I/O by calling libc symbols directly.
+
+Notes:
+- File descriptors are `int` (as in POSIX).
+- Strings are `char*` under the hood, so they can be passed directly to libc.
+- Functions that return heap strings (`file_read_all`) allocate via `__zinc_rt_malloc`.
+  Free the returned string with `free(ptr)` when you're done.
+###
+
+# Common open(2) flags (Linux)
+O_RDONLY is 0;
+O_WRONLY is 1;
+O_RDWR   is 2;
+O_CREAT  is 64;
+O_TRUNC  is 512;
+O_APPEND is 1024;
+
+# seek(2) whence
+SEEK_SET is 0;
+SEEK_CUR is 1;
+SEEK_END is 2;
+
+# Default file mode for created files: 0644
+FILE_MODE_644 is 420;
+
+# libc wrappers
+
+func int str_len(string s) {
+    return __zinc_rt_strlen(s);
+}
+
+func int file_open_mode(string path, int flags, int mode) {
+    # int open(const char *pathname, int flags, mode_t mode);
+    return open(path, flags, mode);
+}
+
+func int file_open(string path, int flags) {
+    return file_open_mode(path, flags, FILE_MODE_644);
+}
+
+func int file_close(int fd) {
+    # int close(int fd);
+    return close(fd);
+}
+
+func int file_read(int fd, int* buf, int count) {
+    # ssize_t read(int fd, void *buf, size_t count);
+    return read(fd, buf, count);
+}
+
+func int file_write(int fd, int* buf, int count) {
+    # ssize_t write(int fd, const void *buf, size_t count);
+    return write(fd, buf, count);
+}
+
+func int file_lseek(int fd, int offset, int whence) {
+    # off_t lseek(int fd, off_t offset, int whence);
+    return lseek(fd, offset, whence);
+}
+
+func int file_unlink(string path) {
+    # int unlink(const char *pathname);
+    return unlink(path);
+}
+
+# Convenience open helpers
+
+func int file_open_read(string path) {
+    return file_open(path, O_RDONLY);
+}
+
+func int file_open_write(string path) {
+    # O_WRONLY | O_CREAT | O_TRUNC = 1 | 64 | 512 = 577
+    return file_open(path, 577);
+}
+
+func int file_open_append(string path) {
+    # O_WRONLY | O_CREAT | O_APPEND = 1 | 64 | 1024 = 1089
+    return file_open(path, 1089);
+}
+
+func int file_open_read_write(string path) {
+    # O_RDWR | O_CREAT = 2 | 64 = 66
+    return file_open(path, 66);
+}
+
+func bool file_exists(string path) {
+    int fd is file_open_read(path);
+    if (fd != -1) {
+        file_close(fd);
+        return true;
+    }
+    return false;
+}
+
+func int file_get_size_fd(int fd) {
+    int cur is file_lseek(fd, 0, SEEK_CUR);
+    int end is file_lseek(fd, 0, SEEK_END);
+    file_lseek(fd, cur, SEEK_SET);
+    return end;
+}
+
+func int file_get_size(string path) {
+    int fd is file_open_read(path);
+    if (fd == -1) { return -1; }
+    int size is file_get_size_fd(fd);
+    file_close(fd);
+    return size;
+}
+
+func int file_delete(string path) {
+    return file_unlink(path);
+}
+
+# Write an entire string to a file descriptor.
+func int file_write_string(int fd, string data) {
+    int n is str_len(data);
+    # Treat string pointer as a byte buffer pointer. We don't have `char*`,
+    # but pointers are currently represented as `int*` in Zinc.
+    return file_write(fd, data, n);
+}
+
+# Read entire file into a heap string (NUL-terminated).
+# Returns "" on error.
+func string file_read_all(string path) {
+    int fd is file_open_read(path);
+    if (fd == -1) { return ""; }
+
+    int size is file_get_size_fd(fd);
+    if (size < 0) {
+        file_close(fd);
+        return "";
+    }
+
+    buf is __zinc_rt_malloc(size + 1);
+    if (buf == 0) {
+        file_close(fd);
+        return "";
+    }
+
+    int got is file_read(fd, buf, size);
+    file_close(fd);
+    if (got < 0) {
+        free(buf);
+        return "";
+    }
+
+    # NUL-terminate (write 1 zero byte)
+    __zinc_rt_memset(buf + got, 0, 1);
+
+    return buf;
+}

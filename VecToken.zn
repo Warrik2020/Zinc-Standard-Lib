@@ -1,0 +1,66 @@
+module();
+
+import("Memory.zn");
+
+###
+VecToken.zn - growable vector of token records.
+#
+# Token record layout (stride = 5 ints):
+# 0 kind
+# 1 start
+# 2 len
+# 3 line
+# 4 col
+###
+
+class VecToken {
+    int data;
+    int len;
+    int cap;
+
+    func void init(int* self) {
+        self->data is 0;
+        self->len is 0;
+        self->cap is 0;
+    }
+
+    func void destroy(int* self) {
+        if (self->data != 0) {
+            free(self->data);
+            self->data is 0;
+        }
+        self->len is 0;
+        self->cap is 0;
+    }
+
+    func void push(int* self, int kind, int start, int n, int line, int col) {
+        if (self->len >= self->cap) {
+            newcap is 0;
+            if (self->cap == 0) { newcap is 64; }
+            else { newcap is self->cap * 2; }
+
+            newdata is rt_malloc(newcap * 5 * 8);
+            if (self->data != 0) {
+                rt_memcpy(newdata, self->data, self->len * 5 * 8);
+                free(self->data);
+            }
+            self->data is newdata;
+            self->cap is newcap;
+        }
+
+        base is self->len * 5;
+        ptr_store(self->data, base + 0, kind);
+        ptr_store(self->data, base + 1, start);
+        ptr_store(self->data, base + 2, n);
+        ptr_store(self->data, base + 3, line);
+        ptr_store(self->data, base + 4, col);
+        self->len is self->len + 1;
+    }
+
+    func int get_kind(int* self, int idx) { return ptr_load(self->data, idx * 5 + 0); }
+    func int get_start(int* self, int idx) { return ptr_load(self->data, idx * 5 + 1); }
+    func int get_len(int* self, int idx) { return ptr_load(self->data, idx * 5 + 2); }
+    func int get_line(int* self, int idx) { return ptr_load(self->data, idx * 5 + 3); }
+    func int get_col(int* self, int idx) { return ptr_load(self->data, idx * 5 + 4); }
+}
+

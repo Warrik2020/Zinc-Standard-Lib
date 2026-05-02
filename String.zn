@@ -1,0 +1,20 @@
+module();
+
+###
+String.zn - minimal string helpers.
+###
+
+import("Memory.zn");
+
+func int len(string s) { return __zinc_rt_strlen(s); }
+func string substr(string s, int start, int n) { return substr_copy(s, start, n); }
+
+# Always-allocating substring for cases where callers will `free()` the result.
+func string substr_copy(string s, int start, int n) {
+    out is rt_malloc(n + 1);
+    if (n > 0) { rt_memcpy(out, s + start, n); }
+    rt_memset(out + n, 0, 1);
+    return out;
+}
+
+func string strdup_copy(string s) { return substr_copy(s, 0, len(s)); }

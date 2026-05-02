@@ -1,0 +1,67 @@
+module();
+
+import("Memory.zn");
+
+###
+VecInt.zn - growable vector of int (64-bit slots).
+###
+
+class VecInt {
+    int data;
+    int len;
+    int cap;
+
+    func void init(int* self) {
+        self->data is 0;
+        self->len is 0;
+        self->cap is 0;
+    }
+
+    func void destroy(int* self) {
+        if (self->data != 0) {
+            free(self->data);
+            self->data is 0;
+        }
+        self->len is 0;
+        self->cap is 0;
+    }
+
+    func void push(int* self, int value) {
+        if (self->len >= self->cap) {
+            newcap is 0;
+            if (self->cap == 0) { newcap is 8; }
+            else { newcap is self->cap * 2; }
+
+            newdata is rt_malloc(newcap * 8);
+            if (self->data != 0) {
+                rt_memcpy(newdata, self->data, self->len * 8);
+                free(self->data);
+            }
+            self->data is newdata;
+            self->cap is newcap;
+        }
+
+        ptr_store(self->data, self->len, value);
+        self->len is self->len + 1;
+    }
+
+    func int get(int* self, int idx) {
+        if (idx < 0 || idx >= self->len) { return 0; }
+        return ptr_load(self->data, idx);
+    }
+
+    func void set(int* self, int idx, int value) {
+        if (idx < 0 || idx >= self->len) { return; }
+        ptr_store(self->data, idx, value);
+    }
+
+    func int count(int* self) { return self->len; }
+
+    func int pop(int* self) {
+        if (self->len <= 0) { return 0; }
+        self->len is self->len - 1;
+        return ptr_load(self->data, self->len);
+    }
+
+    func void clear(int* self) { self->len is 0; }
+}

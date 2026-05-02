@@ -1,0 +1,56 @@
+module();
+
+import("Memory.zn");
+
+###
+Process.zn - minimal process helpers.
+###
+
+func int c_strlen(string s) { return __zinc_rt_strlen(s); }
+
+func string str_concat2(string a, string b) {
+    la is c_strlen(a);
+    lb is c_strlen(b);
+    n is la + lb;
+
+    out is rt_malloc(n + 1);
+    rt_memcpy(out + 0, a, la);
+    rt_memcpy(out + la, b, lb);
+    rt_memset(out + n, 0, 1);
+    return out;
+}
+
+func string str_concat3(string a, string b, string c) {
+    la is c_strlen(a);
+    lb is c_strlen(b);
+    lc is c_strlen(c);
+    n is la + lb + lc;
+
+    out is rt_malloc(n + 1);
+    rt_memcpy(out + 0, a, la);
+    rt_memcpy(out + la, b, lb);
+    rt_memcpy(out + la + lb, c, lc);
+    rt_memset(out + n, 0, 1);
+    return out;
+}
+
+func string str_concat4(string a, string b, string c, string d) {
+    la is c_strlen(a);
+    lb is c_strlen(b);
+    lc is c_strlen(c);
+    ld is c_strlen(d);
+    n is la + lb + lc + ld;
+
+    out is rt_malloc(n + 1);
+    rt_memcpy(out + 0, a, la);
+    rt_memcpy(out + la, b, lb);
+    rt_memcpy(out + la + lb, c, lc);
+    rt_memcpy(out + la + lb + lc, d, ld);
+    rt_memset(out + n, 0, 1);
+    return out;
+}
+
+func int rt_system(string cmd) {
+    # libc: int system(const char *command);
+    return system(cmd);
+}
